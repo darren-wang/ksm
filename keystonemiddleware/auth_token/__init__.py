@@ -89,11 +89,11 @@ HTTP_X_DOMAIN_NAME, HTTP_X_SERVICE_DOMAIN_NAME
 
 HTTP_X_PROJECT_ID, HTTP_X_SERVICE_PROJECT_ID
     Identity service managed unique identifier, string. Only present if
-    this is a project-scoped v3 token, or a tenant-scoped v2 token.
+    this is a project-scoped v3 token.
 
 HTTP_X_PROJECT_NAME, HTTP_X_SERVICE_PROJECT_NAME
     Project name, unique within owning domain, string. Only present if
-    this is a project-scoped v3 token, or a tenant-scoped v2 token.
+    this is a project-scoped v3 token.
 
 HTTP_X_PROJECT_DOMAIN_ID, HTTP_X_SERVICE_PROJECT_DOMAIN_ID
     Identity service managed unique identifier of owning domain of
@@ -135,29 +135,6 @@ HTTP_X_SERVICE_CATALOG
           catalog can be very large; it was decided not to present a catalog
           relating to the service token to avoid using more HTTP header space.
 
-HTTP_X_TENANT_ID
-    *Deprecated* in favor of HTTP_X_PROJECT_ID
-    Identity service managed unique identifier, string. For v3 tokens, this
-    will be set to the same value as HTTP_X_PROJECT_ID
-
-HTTP_X_TENANT_NAME
-    *Deprecated* in favor of HTTP_X_PROJECT_NAME
-    Project identifier, unique within owning domain, string. For v3 tokens,
-    this will be set to the same value as HTTP_X_PROJECT_NAME
-
-HTTP_X_TENANT
-    *Deprecated* in favor of HTTP_X_TENANT_ID and HTTP_X_TENANT_NAME
-    identity server-assigned unique identifier, string. For v3 tokens, this
-    will be set to the same value as HTTP_X_PROJECT_ID
-
-HTTP_X_USER
-    *Deprecated* in favor of HTTP_X_USER_ID and HTTP_X_USER_NAME
-    User name, unique within owning domain, string
-
-HTTP_X_ROLE
-    *Deprecated* in favor of HTTP_X_ROLES
-    Will contain the same values as HTTP_X_ROLES.
-
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -167,7 +144,7 @@ WSGI component.
 keystone.token_info
     Information about the token discovered in the process of validation.  This
     may include extended information returned by the token validation call, as
-    well as basic information about the tenant and user.
+    well as basic information about the project and user.
 
 keystone.token_auth
     A keystoneclient auth plugin that may be used with a
@@ -234,8 +211,7 @@ from keystonemiddleware.i18n import _, _LC, _LE, _LI, _LW
 _OPTS = [
     cfg.StrOpt('auth_uri',
                default=None,
-               # FIXME(dolph): should be default='http://127.0.0.1:5000/v2.0/',
-               # or (depending on client support) an unversioned, publicly
+               # FIXME(dolph): should be an unversioned, publicly
                # accessible identity endpoint (see bug 1207517)
                help='Complete public Identity API endpoint.'),
     cfg.StrOpt('auth_version',
@@ -389,10 +365,6 @@ class _BIND_MODE(object):
     KERBEROS = 'kerberos'
 
 
-def _token_is_v2(token_info):
-    return ('access' in token_info)
-
-
 def _token_is_v3(token_info):
     return ('token' in token_info)
 
@@ -400,9 +372,7 @@ def _token_is_v3(token_info):
 def _get_token_expiration(data):
     if not data:
         raise exc.InvalidToken(_('Token authorization failed'))
-    if _token_is_v2(data):
-        return data['access']['token']['expires']
-    elif _token_is_v3(data):
+    if _token_is_v3(data):
         return data['token']['expires_at']
     else:
         raise exc.InvalidToken(_('Token authorization failed'))
@@ -774,12 +744,8 @@ class AuthProtocol(object):
                     data = jsonutils.loads(verified)
 
                     audit_ids = None
-                    if 'access' in data:
-                        # It's a v2 token.
-                        audit_ids = data['access']['token'].get('audit_ids')
-                    else:
-                        # It's a v3 token
-                        audit_ids = data['token'].get('audit_ids')
+                    
+                    audit_ids = data['token'].get('audit_ids')
 
                     if audit_ids:
                         self._revocations.check_by_audit_id(audit_ids)
@@ -821,9 +787,6 @@ class AuthProtocol(object):
         """
         roles = ','.join(auth_ref.role_names)
 
-        if _token_is_v2(token_info) and not auth_ref.project_id:
-            raise exc.InvalidToken(_('Unable to determine tenancy.'))
-
         rval = {
             'X-Identity-Status': 'Confirmed',
             'X-Roles': roles,
@@ -857,9 +820,6 @@ class AuthProtocol(object):
 
         """
         auth_ref = access.AccessInfo.factory(body=token_info)
-
-        if _token_is_v2(token_info) and not auth_ref.project_id:
-            raise exc.InvalidToken(_('Unable to determine service tenancy.'))
 
         roles = ','.join(auth_ref.role_names)
         rval = {
@@ -916,9 +876,7 @@ class AuthProtocol(object):
             return
 
         try:
-            if _token_is_v2(data):
-                bind = data['access']['token']['bind']
-            elif _token_is_v3(data):
+            if _token_is_v3(data):
                 bind = data['token']['bind']
             else:
                 self._invalid_user_token()

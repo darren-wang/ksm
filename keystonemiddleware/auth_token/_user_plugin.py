@@ -25,10 +25,6 @@ class _TokenData(object):
         self._stored_auth_ref = auth_ref
 
     @property
-    def _is_v2(self):
-        return self._stored_auth_ref.version == 'v2.0'
-
-    @property
     def auth_token(self):
         """The token data used to authenticate requests.
 
@@ -52,10 +48,6 @@ class _TokenData(object):
 
         :returns: str
         """
-        # NOTE(jamielennox): v2 AccessInfo returns 'default' for domain_id
-        # because it can't know that value. We want to return None instead.
-        if self._is_v2:
-            return None
 
         return self._stored_auth_ref.user_domain_id
 
@@ -74,10 +66,6 @@ class _TokenData(object):
 
         :rtype: str
         """
-        # NOTE(jamielennox): v2 AccessInfo returns 'default' for domain_id
-        # because it can't know that value. We want to return None instead.
-        if self._is_v2:
-            return None
 
         return self._stored_auth_ref.project_domain_id
 

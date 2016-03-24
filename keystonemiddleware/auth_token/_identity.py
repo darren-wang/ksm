@@ -38,20 +38,6 @@ class _RequestStrategy(object):
         pass
 
 
-class _V2RequestStrategy(_RequestStrategy):
-
-    AUTH_VERSION = (2, 0)
-
-    def verify_token(self, user_token):
-        return self._json_request('GET',
-                                  '/tokens/%s' % user_token,
-                                  authenticated=True)
-
-    def fetch_cert_file(self, cert_type):
-        return self._adapter.get('/certificates/%s' % cert_type,
-                                 authenticated=False)
-
-
 class _V3RequestStrategy(_RequestStrategy):
 
     AUTH_VERSION = (3, 0)
@@ -74,7 +60,7 @@ class _V3RequestStrategy(_RequestStrategy):
                                  authenticated=False)
 
 
-_REQUEST_STRATEGIES = [_V3RequestStrategy, _V2RequestStrategy]
+_REQUEST_STRATEGIES = [_V3RequestStrategy]
 
 
 class IdentityServer(object):
@@ -132,9 +118,6 @@ class IdentityServer(object):
             if discover.version_match(_V3RequestStrategy.AUTH_VERSION,
                                       self._requested_auth_version):
                 return _V3RequestStrategy
-
-            # The version isn't v3 so we don't know what to do. Just assume V2.
-            return _V2RequestStrategy
 
         # Specific version was not requested then we fall through to
         # discovering available versions from the server
