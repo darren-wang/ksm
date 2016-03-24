@@ -13,7 +13,6 @@
 import logging
 
 from keystoneclient import auth
-from keystoneclient.auth.identity import v2
 from keystoneclient.auth import token_endpoint
 from keystoneclient import discover
 from oslo_config import cfg
