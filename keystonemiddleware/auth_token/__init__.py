@@ -782,8 +782,7 @@ class AuthProtocol(object):
 
         for header_tmplt, attr in six.iteritems(_HEADER_TEMPLATE):
             rval[header_tmplt % ''] = getattr(auth_ref, attr)
-        self._LOG.warning('\n####HERE COMES THE FUCKING AUTH_REF####\n')
-        self._LOG.warning(auth_ref)
+
         if self._include_service_catalog and auth_ref.has_service_catalog():
             catalog = auth_ref.service_catalog.get_data()
             if _token_is_v3(token_info):
