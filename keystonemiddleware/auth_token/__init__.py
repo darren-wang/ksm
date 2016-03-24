@@ -349,13 +349,6 @@ _HEADER_TEMPLATE = {
     'X%s-User-Domain-Name': 'user_domain_name',
 }
 
-_DEPRECATED_HEADER_TEMPLATE = {
-    'X-User': 'username',
-    'X-Tenant-Id': 'project_id',
-    'X-Tenant-Name': 'project_name',
-    'X-Tenant': 'project_name',
-}
-
 
 class _BIND_MODE(object):
     DISABLED = 'disabled'
@@ -632,11 +625,6 @@ class AuthProtocol(object):
             # Service headers
             auth_headers.append(key % '-Service')
 
-        # Deprecated headers
-        auth_headers.append('X-Role')
-        for key in six.iterkeys(_DEPRECATED_HEADER_TEMPLATE):
-            auth_headers.append(key)
-
         self._auth_headers = auth_headers
 
     def _remove_auth_headers(self, env):
@@ -794,11 +782,6 @@ class AuthProtocol(object):
 
         for header_tmplt, attr in six.iteritems(_HEADER_TEMPLATE):
             rval[header_tmplt % ''] = getattr(auth_ref, attr)
-
-        # Deprecated headers
-        rval['X-Role'] = roles
-        for header_tmplt, attr in six.iteritems(_DEPRECATED_HEADER_TEMPLATE):
-            rval[header_tmplt] = getattr(auth_ref, attr)
 
         if self._include_service_catalog and auth_ref.has_service_catalog():
             catalog = auth_ref.service_catalog.get_data()
